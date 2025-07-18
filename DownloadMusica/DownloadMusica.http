@@ -1,0 +1,10 @@
+@DownloadMusica_HostAddress = http://localhost:5100
+
+POST {{DownloadMusica_HostAddress}}/
+Accept: application/json
+Content-Type: application/json
+{
+  "url": "https://www.youtube.com/watch?v=iZGFbPEERJs"
+}
+
+###
