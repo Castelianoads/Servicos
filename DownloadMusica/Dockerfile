@@ -41,5 +41,7 @@ COPY --from=publish /app/publish .
 ENTRYPOINT ["dotnet", "DownloadMusica.dll"]
 
 
-# docker build -t musica-api .
-# docker run -d -p 8080:8080 -p 8081:8081 --name musica-api musica-api
+# docker build -t casteliano/baixar-musica-api .
+# docker run -d -p 8080:8080 -p 8081:8081 --name baixar-musica-api casteliano/baixar-musica-api
+
+# docker build -t casteliano/baixar-musica-api . && docker run -d -p 8080:8080 -p 8081:8081 --name baixar-musica-api casteliano/baixar-musica-api
