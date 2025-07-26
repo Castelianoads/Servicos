@@ -45,3 +45,6 @@ ENTRYPOINT ["dotnet", "DownloadMusica.dll"]
 # docker run -d -p 8080:8080 -p 8081:8081 --name baixar-musica-api casteliano/baixar-musica-api
 
 # docker build -t casteliano/baixar-musica-api . && docker run -d -p 8080:8080 -p 8081:8081 --name baixar-musica-api casteliano/baixar-musica-api
+
+# docker push casteliano/baixar-musica-api:tagname
+# docker push casteliano/baixar-musica-api:latest
