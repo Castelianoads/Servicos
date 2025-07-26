@@ -14,6 +14,7 @@ public class YoutubeService : IYoutubeService
                 FileName = "yt-dlp",
                 Arguments = $"--get-title {urlYoutube}",
                 RedirectStandardOutput = true,
+                RedirectStandardError = true,
                 UseShellExecute = false,
                 CreateNoWindow = true
             };
@@ -22,8 +23,14 @@ public class YoutubeService : IYoutubeService
             if (processoTitulo == null) return string.Empty;
 
             var tituloResposta = await processoTitulo.StandardOutput.ReadToEndAsync();
+            var erroResposta = await processoTitulo.StandardError.ReadToEndAsync();
+
             processoTitulo.WaitForExit();
-            return tituloResposta;
+            if (!string.IsNullOrWhiteSpace(erroResposta))
+                Console.WriteLine($"Erro yt-dlp: {erroResposta}");
+            
+
+            return tituloResposta.Trim();
         }
         catch (Exception e)
         {
@@ -40,6 +47,7 @@ public class YoutubeService : IYoutubeService
                 FileName = "yt-dlp",
                 Arguments = $"-x --audio-format mp3 --audio-quality 0 --output - {urlYoutube}",
                 RedirectStandardOutput = true,
+                RedirectStandardError = true,
                 UseShellExecute = false,
                 CreateNoWindow = true
             };
@@ -48,9 +56,44 @@ public class YoutubeService : IYoutubeService
             if (processoBaixar == null)
                 return null;
 
-            return processoBaixar.StandardOutput.BaseStream;
+            var memStream = new MemoryStream();
+            processoBaixar.StandardOutput.BaseStream.CopyTo(memStream);
+            processoBaixar.WaitForExit();
+            memStream.Position = 0;
+            return memStream;
         }
         catch (Exception e)
+        {
+            return null;
+        }
+    }
+
+    public async Task<string?> BaixarMusicaAsync(string url, string destino)
+    {
+        try
+        {
+            var processoInfo = new ProcessStartInfo
+            {
+                FileName = "yt-dlp",
+                Arguments = $"-x --audio-format mp3 -o \"{Path.Combine(destino, "%(title)s.%(ext)s")}\" {url}",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+            using var processoBaixar = Process.Start(processoInfo);
+            if (processoBaixar == null)
+                return null;
+
+            await processoBaixar.WaitForExitAsync();
+            var arquivo = Directory.GetFiles(destino)
+                                   .OrderByDescending(File.GetCreationTime)
+                                   .FirstOrDefault();
+
+            return arquivo;
+        }
+        catch
         {
             return null;
         }

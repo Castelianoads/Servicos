@@ -55,6 +55,50 @@ app.MapPost("/", async ([FromBody] UrlYoutube urlYoutube, IYoutubeService youtub
 .WithTags("Download")
 .Accepts<UrlYoutube>("application/json");
 
+app.MapPost("/lista", async ([FromBody] UrlYoutubeLista urlYoutube, IYoutubeService youtubeService) =>
+{
+    if (urlYoutube.Urls == null || !urlYoutube.Urls.Any())
+        return Results.BadRequest("Lista de URLs está vazia.");
+
+    if(urlYoutube.Urls.Count > 5)
+        return Results.BadRequest("Permitido maximo de 5 musicas.");
+
+    var tempDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+    Directory.CreateDirectory(tempDir);
+
+    var arquivosBaixados = new List<string>();
+    foreach (var urlCompleta in urlYoutube.Urls)
+    {
+        var url = urlCompleta.Split("&list=")[0];
+        var musicaPath = await youtubeService.BaixarMusicaAsync(url, tempDir);
+        if (!string.IsNullOrWhiteSpace(musicaPath))
+            arquivosBaixados.Add(musicaPath);
+    }
+
+    if (!arquivosBaixados.Any())
+        return Results.BadRequest("Nenhuma música foi baixada com sucesso.");
+
+    var memoriaZip = new MemoryStream();
+    using (var zip = new System.IO.Compression.ZipArchive(memoriaZip, System.IO.Compression.ZipArchiveMode.Create, leaveOpen: true))
+    {
+        foreach (var file in arquivosBaixados)
+        {
+            var entry = zip.CreateEntry(Path.GetFileName(file));
+            using var entryStream = entry.Open();
+            using var fileStream = File.OpenRead(file);
+            await fileStream.CopyToAsync(entryStream);
+        }
+    }
+
+    memoriaZip.Position = 0;
+    try { Directory.Delete(tempDir, true); } catch { }
+
+    return Results.File(memoriaZip, "application/zip", "musicas.zip");
+})
+.WithName("DownloadVarios")
+.WithTags("DownloadVarios")
+.Accepts<UrlYoutubeLista>("application/json");
+
 
 app.Run();
 
