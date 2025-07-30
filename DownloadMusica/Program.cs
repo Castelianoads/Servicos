@@ -48,7 +48,7 @@ app.MapPost("/", async ([FromBody] UrlYoutube urlYoutube, IYoutubeService youtub
 
 
     var tituloSeguro = string.Concat(titulo.Split(Path.GetInvalidFileNameChars()));
-    var fileStream = youtubeService.BaixarMusica(url);
+    var fileStream = await youtubeService.BaixarMusicaAsync(url);
 
     if (fileStream == null) 
         return Results.BadRequest("Erro ao baixar musica");

@@ -1,7 +1,5 @@
 ﻿using DownloadMusica.Interfaces.Services;
-using System;
 using System.Diagnostics;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace DownloadMusica.Services;
 
@@ -63,7 +61,7 @@ public class YoutubeService : IYoutubeService
         }        
     }
 
-    public Stream? BaixarMusica(string urlYoutube)
+    public async Task<Stream?> BaixarMusicaAsync(string urlYoutube)
     {
         try
         {
@@ -85,7 +83,7 @@ public class YoutubeService : IYoutubeService
                 return null;
             }
 
-            processoBaixar.WaitForExit();
+            await processoBaixar.WaitForExitAsync();
 
             if (!File.Exists(arquivoTemporario))
             {
@@ -93,10 +91,15 @@ public class YoutubeService : IYoutubeService
                 return null;
             }
 
-            var stream = new MemoryStream(File.ReadAllBytes(arquivoTemporario));
+            var memoryStream = new MemoryStream();
+            await using (var fileStream = File.OpenRead(arquivoTemporario))
+            {
+                await fileStream.CopyToAsync(memoryStream);
+            }
+
             File.Delete(arquivoTemporario);
-            stream.Position = 0;
-            return stream;
+            memoryStream.Position = 0;
+            return memoryStream;
         }
         catch (Exception e)
         {
