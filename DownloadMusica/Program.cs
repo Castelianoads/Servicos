@@ -43,12 +43,17 @@ app.MapPost("/", async ([FromBody] UrlYoutube urlYoutube, IYoutubeService youtub
 
     var url = urlYoutube.Url.Split("&list=")[0];
     string? titulo = await youtubeService.ObterTituloAsync(url);
+    if (string.IsNullOrEmpty(titulo))
+        titulo = "Titulo desconhecido";
+
+
+    var tituloSeguro = string.Concat(titulo.Split(Path.GetInvalidFileNameChars()));
     var fileStream = youtubeService.BaixarMusica(url);
 
     if (fileStream == null) 
         return Results.BadRequest("Erro ao baixar musica");
 
-    return Results.File(fileStream, "audio/mpeg", $"{titulo}.mp3");
+    return Results.File(fileStream, "audio/mpeg", $"{tituloSeguro}.mp3", enableRangeProcessing: true);
 
 })
 .WithName("Download")

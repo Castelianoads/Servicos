@@ -1,10 +1,18 @@
 ﻿using DownloadMusica.Interfaces.Services;
+using System;
 using System.Diagnostics;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace DownloadMusica.Services;
 
 public class YoutubeService : IYoutubeService
 {
+    private readonly ILogger<YoutubeService> _logger;   
+    public YoutubeService(ILogger<YoutubeService> logger)
+    {
+        _logger = logger;
+    }   
+
     public async Task<string?> ObterTituloAsync(string urlYoutube)
     {
         try
@@ -20,20 +28,37 @@ public class YoutubeService : IYoutubeService
             };
 
             using var processoTitulo = Process.Start(tituloProcessoInfo);
-            if (processoTitulo == null) return string.Empty;
+            if (processoTitulo == null)
+            {
+                _logger.LogError("Processo Info de obter o titulo null.");
+                return string.Empty;
+            }
 
-            var tituloResposta = await processoTitulo.StandardOutput.ReadToEndAsync();
-            var erroResposta = await processoTitulo.StandardError.ReadToEndAsync();
+            var entradaTask = processoTitulo.StandardOutput.ReadToEndAsync();
+            var erroTask = processoTitulo.StandardError.ReadToEndAsync();
 
-            processoTitulo.WaitForExit();
-            if (!string.IsNullOrWhiteSpace(erroResposta))
-                Console.WriteLine($"Erro yt-dlp: {erroResposta}");
+            await processoTitulo.WaitForExitAsync();
             
+            string saidaResposta = await entradaTask;
+            string erroResposta = await erroTask;
 
-            return tituloResposta.Trim();
+            if (!string.IsNullOrWhiteSpace(erroResposta))
+            {
+                _logger.LogError($"Erro do yt-dlp: {erroResposta}");
+                return null;
+            }
+
+            if (string.IsNullOrWhiteSpace(saidaResposta))
+            {
+                _logger.LogWarning($"yt-dlp não retornou título para URL: {urlYoutube}");
+                return null;
+            }
+
+            return saidaResposta.Trim();
         }
         catch (Exception e)
         {
+            _logger.LogError(e, "Erro ao obter titulo da musica.");
             return string.Empty;
         }        
     }
@@ -42,11 +67,12 @@ public class YoutubeService : IYoutubeService
     {
         try
         {
+            string arquivoTemporario = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.mp3");
+
             var processoInfo = new ProcessStartInfo
             {
                 FileName = "yt-dlp",
-                Arguments = $"-x --audio-format mp3 --audio-quality 0 --output - {urlYoutube}",
-                RedirectStandardOutput = true,
+                Arguments = $"-f bestaudio --extract-audio --audio-format mp3 --audio-quality 0 -o \"{arquivoTemporario}\" {urlYoutube}",
                 RedirectStandardError = true,
                 UseShellExecute = false,
                 CreateNoWindow = true
@@ -54,16 +80,27 @@ public class YoutubeService : IYoutubeService
 
             using var processoBaixar = Process.Start(processoInfo);
             if (processoBaixar == null)
+            {
+                _logger.LogError("Processo Info de baixar musica null.");
                 return null;
+            }
 
-            var memStream = new MemoryStream();
-            processoBaixar.StandardOutput.BaseStream.CopyTo(memStream);
             processoBaixar.WaitForExit();
-            memStream.Position = 0;
-            return memStream;
+
+            if (!File.Exists(arquivoTemporario))
+            {
+                _logger.LogError($"yt-dlp falhou. Arquivo {arquivoTemporario} não existe.");
+                return null;
+            }
+
+            var stream = new MemoryStream(File.ReadAllBytes(arquivoTemporario));
+            File.Delete(arquivoTemporario);
+            stream.Position = 0;
+            return stream;
         }
         catch (Exception e)
         {
+            _logger.LogError(e, "Erro ao baixar musica.");
             return null;
         }
     }
@@ -75,7 +112,7 @@ public class YoutubeService : IYoutubeService
             var processoInfo = new ProcessStartInfo
             {
                 FileName = "yt-dlp",
-                Arguments = $"-x --audio-format mp3 -o \"{Path.Combine(destino, "%(title)s.%(ext)s")}\" {url}",
+                Arguments = $"-f bestaudio --extract-audio --audio-format mp3 --audio-quality 0 -o \"{Path.Combine(destino, "%(title)s.%(ext)s")}\" {url}",
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
