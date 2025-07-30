@@ -28,7 +28,7 @@ public class YoutubeService : IYoutubeService
             using var processoTitulo = Process.Start(tituloProcessoInfo);
             if (processoTitulo == null)
             {
-                _logger.LogError("Processo Info de obter o titulo null.");
+                _logger.LogError("yt-dlp falhou ao iniciar processo de obter titulo.");
                 return string.Empty;
             }
 
@@ -79,7 +79,7 @@ public class YoutubeService : IYoutubeService
             using var processoBaixar = Process.Start(processoInfo);
             if (processoBaixar == null)
             {
-                _logger.LogError("Processo Info de baixar musica null.");
+                _logger.LogError("yt-dlp falhou ao iniciar processo ao baixar musica");
                 return null;
             }
 
@@ -112,11 +112,12 @@ public class YoutubeService : IYoutubeService
     {
         try
         {
+            string caminhoArquivo = Path.Combine(destino, "%(title)s.%(ext)s");
+
             var processoInfo = new ProcessStartInfo
             {
                 FileName = "yt-dlp",
-                Arguments = $"-f bestaudio --extract-audio --audio-format mp3 --audio-quality 0 -o \"{Path.Combine(destino, "%(title)s.%(ext)s")}\" {url}",
-                RedirectStandardOutput = true,
+                Arguments = $"-f bestaudio --extract-audio --audio-format mp3 --audio-quality 0 -o \"{caminhoArquivo}\" {url}",
                 RedirectStandardError = true,
                 UseShellExecute = false,
                 CreateNoWindow = true
@@ -124,17 +125,24 @@ public class YoutubeService : IYoutubeService
 
             using var processoBaixar = Process.Start(processoInfo);
             if (processoBaixar == null)
+            {
+                _logger.LogError("yt-dlp falhou ao iniciar processo ao baixar varias musicas.");
                 return null;
+            }
 
             await processoBaixar.WaitForExitAsync();
-            var arquivo = Directory.GetFiles(destino)
-                                   .OrderByDescending(File.GetCreationTime)
+
+            var arquivo = Directory.GetFiles(destino, "*.mp3")
+                                   .OrderByDescending(File.GetLastWriteTime)
                                    .FirstOrDefault();
+            if (arquivo == null)
+                _logger.LogWarning("Nenhum arquivo MP3 foi gerado em {Destino}", destino);
 
             return arquivo;
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "Erro ao baixar varias músicas.");
             return null;
         }
     }

@@ -68,40 +68,45 @@ app.MapPost("/lista", async ([FromBody] UrlYoutubeLista urlYoutube, IYoutubeServ
     if(urlYoutube.Urls.Count > 5)
         return Results.BadRequest("Permitido maximo de 5 musicas.");
 
-    var tempDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
-    Directory.CreateDirectory(tempDir);
+    var diretorioTemporario = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+    Directory.CreateDirectory(diretorioTemporario);
 
     var arquivosBaixados = new List<string>();
     foreach (var urlCompleta in urlYoutube.Urls)
     {
         var url = urlCompleta.Split("&list=")[0];
-        var musicaPath = await youtubeService.BaixarMusicaAsync(url, tempDir);
-        if (!string.IsNullOrWhiteSpace(musicaPath))
+        var musicaPath = await youtubeService.BaixarMusicaAsync(url, diretorioTemporario);
+        if (!string.IsNullOrWhiteSpace(musicaPath) && File.Exists(musicaPath))
             arquivosBaixados.Add(musicaPath);
     }
 
     if (!arquivosBaixados.Any())
+    {
+        try { Directory.Delete(diretorioTemporario, true); } catch { }
         return Results.BadRequest("Nenhuma música foi baixada com sucesso.");
+    }
 
     var memoriaZip = new MemoryStream();
     using (var zip = new System.IO.Compression.ZipArchive(memoriaZip, System.IO.Compression.ZipArchiveMode.Create, leaveOpen: true))
     {
         foreach (var file in arquivosBaixados)
         {
-            var entry = zip.CreateEntry(Path.GetFileName(file));
-            using var entryStream = entry.Open();
+            var nomeSeguro = Path.GetFileName(file);
+            var entry = zip.CreateEntry(nomeSeguro);
+
             using var fileStream = File.OpenRead(file);
+            using var entryStream = entry.Open();
             await fileStream.CopyToAsync(entryStream);
         }
     }
 
     memoriaZip.Position = 0;
-    try { Directory.Delete(tempDir, true); } catch { }
+    try { Directory.Delete(diretorioTemporario, true); } catch { }
 
     return Results.File(memoriaZip, "application/zip", "musicas.zip");
 })
 .WithName("DownloadVarios")
-.WithTags("DownloadVarios")
+.WithTags("Download")
 .Accepts<UrlYoutubeLista>("application/json");
 
 
