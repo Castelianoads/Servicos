@@ -33,15 +33,15 @@ app.UseSwaggerUI(c =>
     c.RoutePrefix = string.Empty;
 });
 
-app.UseHttpsRedirection();
+//app.UseHttpsRedirection();
 
 
 app.MapPost("/", async ([FromBody] UrlYoutube urlYoutube, IYoutubeService youtubeService) =>
 {
     if (string.IsNullOrEmpty(urlYoutube.Url))
         return Results.BadRequest("O link do YouTube é obrigatório.");
-
-    var url = urlYoutube.Url.Split("&list=")[0];
+        
+    var url = urlYoutube.Url.Trim();
     string? titulo = await youtubeService.ObterTituloAsync(url);
     if (string.IsNullOrEmpty(titulo))
         titulo = "Titulo desconhecido";
@@ -74,7 +74,8 @@ app.MapPost("/lista", async ([FromBody] UrlYoutubeLista urlYoutube, IYoutubeServ
     var arquivosBaixados = new List<string>();
     foreach (var urlCompleta in urlYoutube.Urls)
     {
-        var url = urlCompleta.Split("&list=")[0];
+        //var url = urlCompleta.Split("&list=")[0];
+        var url = urlCompleta.Trim();
         var musicaPath = await youtubeService.BaixarMusicaAsync(url, diretorioTemporario);
         if (!string.IsNullOrWhiteSpace(musicaPath) && File.Exists(musicaPath))
             arquivosBaixados.Add(musicaPath);

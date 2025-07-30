@@ -15,10 +15,12 @@ public class YoutubeService : IYoutubeService
     {
         try
         {
+            var url = urlYoutube.Split("&list=")[0];
+
             var tituloProcessoInfo = new ProcessStartInfo
             {
                 FileName = "yt-dlp",
-                Arguments = $"--get-title {urlYoutube}",
+                Arguments = $"--get-title \"{url}\"",
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
@@ -48,7 +50,7 @@ public class YoutubeService : IYoutubeService
 
             if (string.IsNullOrWhiteSpace(saidaResposta))
             {
-                _logger.LogWarning($"yt-dlp não retornou título para URL: {urlYoutube}");
+                _logger.LogWarning($"yt-dlp não retornou título para URL: {url}");
                 return null;
             }
 
@@ -70,7 +72,7 @@ public class YoutubeService : IYoutubeService
             var processoInfo = new ProcessStartInfo
             {
                 FileName = "yt-dlp",
-                Arguments = $"-f bestaudio --extract-audio --audio-format mp3 --audio-quality 0 -o \"{arquivoTemporario}\" {urlYoutube}",
+                Arguments = $"-f bestaudio --extract-audio --audio-format mp3 --audio-quality 0 --no-playlist -o \"{arquivoTemporario}\" \"{urlYoutube}\"",
                 RedirectStandardError = true,
                 UseShellExecute = false,
                 CreateNoWindow = true
@@ -117,7 +119,7 @@ public class YoutubeService : IYoutubeService
             var processoInfo = new ProcessStartInfo
             {
                 FileName = "yt-dlp",
-                Arguments = $"-f bestaudio --extract-audio --audio-format mp3 --audio-quality 0 -o \"{caminhoArquivo}\" {url}",
+                Arguments = $"-f bestaudio --extract-audio --audio-format mp3 --audio-quality 0 --no-playlist -o \"{caminhoArquivo}\" {url}",
                 RedirectStandardError = true,
                 UseShellExecute = false,
                 CreateNoWindow = true
